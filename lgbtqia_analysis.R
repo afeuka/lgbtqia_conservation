@@ -8,10 +8,32 @@ library(betareg)
 library(grid)
 library(pROC)
 library(boot)
+library(rstatix)
 
 load("./Data/lgbtqia_survresults_20032023_cleanheadings_bin.Rdata") #cleaned
 total_respond <- nrow(dat)
 text.size=15
+
+#Inclusion -----------------------------
+dat$Conservation_inclusive <- factor(dat$Conservation_inclusive,
+                                     levels=c("Strongly disagree",
+                                              "Somewhat disagree",
+                                              "Neither agree nor disagree",
+                                              "Somewhat agree",
+                                              "Strongly agree",
+                                              ""))
+levels(dat$Conservation_inclusive)[levels(dat$Conservation_inclusive)==""] <- "No Response"
+
+dat$Conservation_inclusive_no <- as.numeric(dat$Conservation_inclusive)
+
+dat$lgbtqia <- ifelse(dat$cis==0 | dat$hetero==0,1,0)
+
+dat %>% identify_outliers(Conservation_inclusive_no)
+dat %>% shapiro_test(Conservation_inclusive_no)
+
+wilcox.test(Conservation_inclusive_no ~ lgbtqia, data=dat) 
+wilcox.test(Conservation_inclusive_no ~ cis, data=dat) 
+wilcox.test(Conservation_inclusive_no ~ hetero, data=dat) 
 
 # Outness -----------------------------------------------------------------
 ## sexual orientation -----------------------------------------------------------------
@@ -36,7 +58,7 @@ outlocs <- c("Colleagues at work/school",
              "Non-work/school friends",
              "Chosen family",
              "Biological family")
-
+dat$Age.sc <- scale(dat$Age)
 out.so <- dat %>% select(SexOrientation_Out_who,queer_so,queer_gi,
                          Age.sc,poc,republican,academ.bin,vote.dem.cont) %>%
   filter(queer_so==1)
